@@ -7,7 +7,9 @@
 #ifndef CROS_GRALLOC_HANDLE_H
 #define CROS_GRALLOC_HANDLE_H
 
+#ifdef __cplusplus
 #include <cstdint>
+#endif
 #include <cutils/native_handle.h>
 
 #define DRV_MAX_PLANES 4
@@ -36,6 +38,7 @@ struct cros_gralloc_handle {
 	uint32_t producer_usage;
 	uint32_t requested_width;
 	uint32_t requested_height;
+	uint32_t fb_id;
 };
 
 typedef const struct cros_gralloc_handle *cros_gralloc_handle_t;

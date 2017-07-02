@@ -23,6 +23,7 @@
 
 #include <hardware/gralloc.h>
 
+#include <stdlib.h>
 #include <inttypes.h>
 
 
@@ -58,6 +59,8 @@ uint64_t cros_gralloc1_convert_flags(uint64_t producer_flags, uint64_t consumer_
 	if (consumer_flags & GRALLOC1_CONSUMER_USAGE_RENDERSCRIPT)
 		/* We use CPU for compute. */
 		usage |= BO_USE_LINEAR;
+    if (consumer_flags & GRALLOC_USAGE_HW_FB)
+        usage |= BO_USE_FRAMEBUFFER | BO_USE_RENDERING;
 
 	if (producer_flags & GRALLOC1_PRODUCER_USAGE_CPU_READ)
 		usage |= BO_USE_SW_READ_RARELY;
@@ -114,15 +117,23 @@ CrosGralloc1::~CrosGralloc1 ()
 {
 }
 
+#define SURFACEFLINGER_PATH "/system/bin/surfaceflinger"
+
 bool CrosGralloc1::Init()
 {
     if (driver)
         return true;
 
     driver = std::make_unique<cros_gralloc_driver>();
+
+    if (strcmp(SURFACEFLINGER_PATH, getprogname())) {
     if (driver->init()) {
 	cros_gralloc_error("Failed to initialize driver.");
 	return false;
+    }
+    } else if (driver->init_master()) {
+        cros_gralloc_error("Failed to initialize driver.");
+        return false;
     }
 
     return true;
@@ -575,7 +586,7 @@ int32_t CrosGralloc1::getStride(buffer_handle_t buffer, uint32_t* outStride)
 int CrosGralloc1::HookDevOpen(const struct hw_module_t *mod,
 			      const char *name,
 			      struct hw_device_t **device) {
-    if (strcmp(name, GRALLOC_HARDWARE_MODULE_ID)) {
+    if (strcmp(name, GRALLOC_HARDWARE_MODULE_ID) && strcmp(name, GRALLOC_HARDWARE_FB0)) {
 	ALOGE("Invalid module name- %s", name);
 	return -EINVAL;
     }
@@ -584,6 +595,9 @@ int CrosGralloc1::HookDevOpen(const struct hw_module_t *mod,
     ref_count++;
 
     if(pCrosGralloc1 != NULL) {
+        if (!strcmp(name, GRALLOC_HARDWARE_FB0)) {
+            return cros_gralloc_open_framebuffer(&pCrosGralloc1->fb, pCrosGralloc1->driver->get_fd(), mod, device);
+        }
 	*device = &pCrosGralloc1->common;
 	return 0;
     }
@@ -602,6 +616,11 @@ int CrosGralloc1::HookDevOpen(const struct hw_module_t *mod,
     }
 
     ctx->common.module = const_cast<hw_module_t *>(mod);
+
+    if (!strcmp(name, GRALLOC_HARDWARE_FB0)) {
+        return cros_gralloc_open_framebuffer(&ctx->fb, ctx->driver->get_fd(), mod, device);
+    }
+
     *device = &ctx->common;
     ctx.release();
     return 0;
