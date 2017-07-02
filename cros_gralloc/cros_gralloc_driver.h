@@ -20,6 +20,9 @@ class cros_gralloc_driver
 	~cros_gralloc_driver();
 
 	int32_t init();
+	int32_t init_master();
+	int get_fd();
+
 	bool is_supported(const struct cros_gralloc_buffer_descriptor *descriptor);
 	int32_t allocate(const struct cros_gralloc_buffer_descriptor *descriptor,
 			 buffer_handle_t *out_handle);
