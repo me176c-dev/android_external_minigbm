@@ -222,6 +222,7 @@ struct bo *drv_bo_new(struct driver *drv, uint32_t width, uint32_t height, uint3
 	bo->format = format;
 	bo->flags = flags;
 	bo->num_planes = drv_num_planes_from_format(format);
+	bo->fb_id = -1;
 
 	if (!bo->num_planes) {
 		free(bo);
@@ -495,6 +496,11 @@ uint64_t drv_bo_get_plane_format_modifier(struct bo *bo, size_t plane)
 uint32_t drv_bo_get_format(struct bo *bo)
 {
 	return bo->format;
+}
+
+uint32_t drv_bo_get_framebuffer_id(struct bo *bo)
+{
+	return bo->fb_id;
 }
 
 uint32_t drv_resolve_format(struct driver *drv, uint32_t format, uint64_t usage)
