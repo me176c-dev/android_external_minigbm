@@ -20,12 +20,16 @@ class cros_gralloc_driver
 	~cros_gralloc_driver();
 
 	int32_t init();
+	int32_t init_master();
+
 	bool is_supported(const struct cros_gralloc_buffer_descriptor *descriptor);
 	int32_t allocate(const struct cros_gralloc_buffer_descriptor *descriptor,
 			 buffer_handle_t *out_handle);
 
 	int32_t retain(buffer_handle_t handle);
 	int32_t release(buffer_handle_t handle);
+
+	int32_t add_framebuffer(cros_gralloc_handle_t hnd);
 
 	int32_t lock(buffer_handle_t handle, int32_t acquire_fence, uint32_t map_flags,
 		     uint8_t *addr[DRV_MAX_PLANES]);

@@ -149,6 +149,11 @@ static int i915_add_combinations(struct driver *drv)
 	if (ret)
 		return ret;
 
+	ret = drv_add_combinations(drv, render_target_formats, ARRAY_SIZE(render_target_formats),
+				   &metadata, BO_USE_FRAMEBUFFER_MASK);
+	if (ret)
+		return ret;
+
 	ret = drv_add_combinations(drv, tileable_texture_source_formats,
 				   ARRAY_SIZE(tileable_texture_source_formats), &metadata,
 				   texture_use_flags);
@@ -334,6 +339,11 @@ static int i915_bo_create_for_modifier(struct bo *bo, uint32_t width, uint32_t h
 	}
 
 	stride = drv_stride_from_format(format, width, 0);
+
+	if (bo->use_flags & BO_USE_FRAMEBUFFER) {
+		width = ALIGN(width, 64);
+		stride = drv_stride_from_format(format, width, 0);
+	}
 
 	/*
 	 * Align cursor width and height to values expected by Intel

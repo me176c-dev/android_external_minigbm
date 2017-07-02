@@ -24,6 +24,7 @@
 
 #include <hardware/gralloc.h>
 
+#include <stdlib.h>
 #include <inttypes.h>
 #include "../i915_private_android.h"
 #include "../i915_private_android_types.h"
@@ -58,6 +59,8 @@ uint64_t cros_gralloc1_convert_usage(uint64_t producer_flags, uint64_t consumer_
 		usage |= BO_USE_CAMERA_READ;
 	if (consumer_flags & GRALLOC1_CONSUMER_USAGE_RENDERSCRIPT)
 		usage |= BO_USE_RENDERSCRIPT;
+    if (consumer_flags & GRALLOC_USAGE_HW_FB)
+        usage |= BO_USE_FRAMEBUFFER | BO_USE_RENDERING;
 
 	if (producer_flags & GRALLOC1_PRODUCER_USAGE_CPU_READ)
 		usage |= BO_USE_SW_READ_RARELY;
@@ -128,6 +131,8 @@ static SpinLock global_lock_;
 
 CrosGralloc1::CrosGralloc1()
 {
+	driver = NULL;
+	fb = NULL;
 	getCapabilities = getCapabilitiesHook;
 	getFunction = getFunctionHook;
 	common.tag = HARDWARE_DEVICE_TAG;
@@ -151,6 +156,27 @@ bool CrosGralloc1::Init()
 	}
 
 	return true;
+}
+
+extern "C" int cros_gralloc_init_framebuffer(struct hw_device_t *gralloc, int fd, struct hw_device_t **dev);
+
+int CrosGralloc1::InitFramebuffer()
+{
+	driver = std::make_unique<cros_gralloc_driver>();
+	int fd = driver->init_master();
+	if (fd < 0) {
+		cros_gralloc_error("Failed to intialize driver: %d", fd);
+		return fd;
+	}
+
+	struct hw_device_t *dev;
+	int ret = cros_gralloc_init_framebuffer(&common, fd, &dev);
+	if (ret) {
+		return ret;
+	}
+
+	fb.reset(dev);
+	return 0;
 }
 
 void CrosGralloc1::doGetCapabilities(uint32_t *outCount, int32_t *outCapabilities)
@@ -369,6 +395,13 @@ int32_t CrosGralloc1::retain(buffer_handle_t bufferHandle)
 {
 	if (driver->retain(bufferHandle))
 		return CROS_GRALLOC_ERROR_BAD_HANDLE;
+
+	if (fb) {
+		auto handle = cros_gralloc_convert_handle(bufferHandle);
+		if (handle->consumer_usage & GRALLOC_USAGE_HW_FB) {
+			return driver->add_framebuffer(handle);
+		}
+	}
 
 	return CROS_GRALLOC_ERROR_NONE;
 }
@@ -650,7 +683,8 @@ int32_t CrosGralloc1::getByteStride(buffer_handle_t buffer, uint32_t *outStride,
 int CrosGralloc1::HookDevOpen(const struct hw_module_t *mod, const char *name,
 			      struct hw_device_t **device)
 {
-	if (strcmp(name, GRALLOC_HARDWARE_MODULE_ID)) {
+	bool fb = !strcmp(name, GRALLOC_HARDWARE_FB0);
+	if (!fb && strcmp(name, GRALLOC_HARDWARE_MODULE_ID)) {
 		ALOGE("Invalid module name- %s", name);
 		return -EINVAL;
 	}
@@ -659,6 +693,16 @@ int CrosGralloc1::HookDevOpen(const struct hw_module_t *mod, const char *name,
 	ref_count++;
 
 	if (pCrosGralloc1 != NULL) {
+		if (fb) {
+			if (pCrosGralloc1->fb) {
+				*device = pCrosGralloc1->fb.get();
+				return 0;
+			}
+
+			ALOGE("Attemting to open framebuffer device after initialization");
+			return -ENODEV;
+		}
+
 		*device = &pCrosGralloc1->common;
 		return 0;
 	} else
@@ -670,12 +714,21 @@ int CrosGralloc1::HookDevOpen(const struct hw_module_t *mod, const char *name,
 		return -ENOMEM;
 	}
 
+	if (fb) {
+		int ret = ctx->InitFramebuffer();
+		if (ret) {
+			return ret;
+		}
+
+		ctx->fb->module = const_cast<hw_module_t *>(mod);
+	} else
 	if (!ctx->Init()) {
 		ALOGE("Failed to initialize CrosGralloc1. \n");
 		return -EINVAL;
 	}
 
 	ctx->common.module = const_cast<hw_module_t *>(mod);
+	if (fb) *device = ctx->fb.get(); else
 	*device = &ctx->common;
 	ctx.release();
 	return 0;

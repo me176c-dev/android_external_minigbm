@@ -48,6 +48,7 @@ class CrosGralloc1 : public gralloc1_device_t
 	~CrosGralloc1();
 
 	bool Init();
+	int InitFramebuffer();
 
 	static int HookDevOpen(const struct hw_module_t *mod, const char *name,
 			       struct hw_device_t **device);
@@ -322,6 +323,7 @@ class CrosGralloc1 : public gralloc1_device_t
 
 	// Adapter internals
 	std::unique_ptr<cros_gralloc_driver> driver;
+	std::unique_ptr<struct hw_device_t> fb;
 };
 
 } // namespace android

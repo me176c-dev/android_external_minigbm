@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <fcntl.h>
 #include <xf86drm.h>
+#include <xf86drmMode.h>
 #include <unistd.h>
 
 cros_gralloc_driver::cros_gralloc_driver() : drv_(nullptr)
@@ -78,6 +79,21 @@ int32_t cros_gralloc_driver::init()
 		}
 	}
 
+	return -ENODEV;
+}
+
+#define GPU_PRIMARY_PATH "/dev/dri/card0"
+
+int32_t cros_gralloc_driver::init_master()
+{
+	int fd = open(GPU_PRIMARY_PATH, O_RDWR, 0);
+	if (fd >= 0) {
+		drv_ = drv_create(fd);
+		if (drv_)
+			return fd;
+	} else {
+		cros_gralloc_error("Failed to open GPU");
+	}
 	return -ENODEV;
 }
 
@@ -263,6 +279,33 @@ int32_t cros_gralloc_driver::release(buffer_handle_t handle)
 	}
 
 	return 0;
+}
+
+int32_t cros_gralloc_driver::add_framebuffer(cros_gralloc_handle_t hnd)
+{
+	if (hnd->fb_id) {
+		return 0;
+	}
+
+	SCOPED_SPIN_LOCK(mutex_);
+
+	auto buffer = get_buffer(hnd);
+	if (!buffer) {
+		cros_gralloc_error("Invalid Reference.");
+		return -EINVAL;
+	}
+
+	uint32_t format = hnd->format;
+	uint32_t pitches[4] = { hnd->strides[0], 0, 0, 0 };
+	uint32_t offsets[4] = { 0, 0, 0, 0 };
+	uint32_t handles[4] = { buffer->get_id(), 0, 0, 0 };
+
+	// Don't use alpha bits for framebuffer
+	if (format == DRM_FORMAT_ABGR8888)
+		format = DRM_FORMAT_XBGR8888;
+
+	return drmModeAddFB2(drv_get_fd(drv_), hnd->width, hnd->height,
+		format, handles, pitches, offsets, const_cast<uint32_t*>(&hnd->fb_id), 0);
 }
 
 int32_t cros_gralloc_driver::lock(buffer_handle_t handle, int32_t acquire_fence, uint32_t map_flags,
