@@ -76,6 +76,26 @@ int32_t cros_gralloc_driver::init()
 	return -ENODEV;
 }
 
+#define GPU_PRIMARY_PATH "/dev/dri/card0"
+
+int32_t cros_gralloc_driver::init_master()
+{
+	int fd = open(GPU_PRIMARY_PATH, O_RDWR, 0);
+	if (fd >= 0) {
+		drv_ = drv_create(fd);
+		if (drv_)
+			return 0;
+	} else {
+		cros_gralloc_error("Failed to open GPU");
+	}
+	return -ENODEV;
+}
+
+int cros_gralloc_driver::get_fd()
+{
+	return drv_get_fd(drv_);
+}
+
 bool cros_gralloc_driver::is_supported(const struct cros_gralloc_buffer_descriptor *descriptor)
 {
 	struct combination *combo;
@@ -148,6 +168,7 @@ int32_t cros_gralloc_driver::allocate(const struct cros_gralloc_buffer_descripto
 	hnd->usage = descriptor->producer_usage;
 	hnd->producer_usage = descriptor->producer_usage;
 	hnd->consumer_usage = descriptor->consumer_usage;
+	hnd->fb_id = drv_bo_get_framebuffer_id(bo);
 
 	id = drv_bo_get_plane_handle(bo, 0).u32;
 	auto buffer = new cros_gralloc_buffer(id, bo, hnd);

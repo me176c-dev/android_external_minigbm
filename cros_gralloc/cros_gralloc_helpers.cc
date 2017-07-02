@@ -57,7 +57,7 @@ uint32_t cros_gralloc_convert_format(int format)
 	return i915_private_convert_format(format);
 }
 
-cros_gralloc_handle_t cros_gralloc_convert_handle(buffer_handle_t handle)
+extern "C" cros_gralloc_handle_t cros_gralloc_convert_handle(buffer_handle_t handle)
 {
 	auto hnd = reinterpret_cast<cros_gralloc_handle_t>(handle);
 	if (!hnd || hnd->magic != cros_gralloc_magic)

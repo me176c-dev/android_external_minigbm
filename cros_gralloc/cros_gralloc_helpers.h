@@ -21,7 +21,7 @@ constexpr uint32_t handle_data_size =
 const char *drmFormat2Str(int format);
 uint32_t cros_gralloc_convert_format(int32_t format);
 
-cros_gralloc_handle_t cros_gralloc_convert_handle(buffer_handle_t handle);
+extern "C" cros_gralloc_handle_t cros_gralloc_convert_handle(buffer_handle_t handle);
 
 int32_t cros_gralloc_sync_wait(int32_t acquire_fence);
 
