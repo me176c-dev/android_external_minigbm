@@ -37,6 +37,7 @@ extern "C" {
 #define BO_USE_CAMERA_READ		(1ull << 14)
 #define BO_USE_RENDERSCRIPT		(1ull << 16)
 #define BO_USE_TEXTURE			(1ull << 17)
+#define BO_USE_FRAMEBUFFER		(1ull << 18)
 
 /* Read-Write permissions for drv_bo_map() flags */
 #define BO_TRANSFER_NONE 0
@@ -138,6 +139,8 @@ uint64_t drv_bo_get_plane_format_modifier(struct bo *bo, size_t plane);
 uint32_t drv_bo_get_format(struct bo *bo);
 
 uint32_t drv_bo_get_stride_in_pixels(struct bo *bo);
+
+uint32_t drv_bo_get_framebuffer_id(struct bo *bo);
 
 uint32_t drv_resolve_format(struct driver *drv, uint32_t format, uint64_t usage);
 

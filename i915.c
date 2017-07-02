@@ -12,6 +12,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #include "drv_priv.h"
 #include "helpers.h"
@@ -154,6 +155,11 @@ static int i915_add_combinations(struct driver *drv)
 
 	ret = drv_add_combinations(drv, render_target_formats, ARRAY_SIZE(render_target_formats),
 				   &metadata, render_flags);
+	if (ret)
+		return ret;
+
+	ret = drv_add_combinations(drv, render_target_formats, ARRAY_SIZE(render_target_formats),
+				   &metadata, BO_USE_FRAMEBUFFER_MASK);
 	if (ret)
 		return ret;
 
@@ -328,6 +334,20 @@ static int i915_init(struct driver *drv)
 	return i915_add_combinations(drv);
 }
 
+static int i915_bo_add_framebuffer(struct bo *bo, uint32_t format, uint32_t stride, uint32_t handle)
+{
+	uint32_t pitches[4] = { stride, 0, 0, 0 };
+	uint32_t offsets[4] = { 0, 0, 0, 0 };
+	uint32_t handles[4] = { handle, 0, 0, 0 };
+
+	// Don't use alpha bits for framebuffer
+	if (format == DRM_FORMAT_ABGR8888)
+		format = DRM_FORMAT_XBGR8888;
+
+	return drmModeAddFB2(bo->drv->fd, bo->width, bo->height,
+		format, handles, pitches, offsets, &bo->fb_id, 0);
+}
+
 static int i915_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32_t format,
 			  uint32_t flags)
 {
@@ -346,6 +366,11 @@ static int i915_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32
 	bo->tiling = combo->metadata.tiling;
 
 	stride = drv_stride_from_format(format, width, 0);
+
+	if (flags & BO_USE_FRAMEBUFFER) {
+		width = ALIGN(width, 64);
+		stride = drv_stride_from_format(format, width, 0);
+	}
 
         /*
          * Align cursor width and height to values expected by Intel
@@ -432,6 +457,11 @@ static int i915_bo_create(struct bo *bo, uint32_t width, uint32_t height, uint32
 
 		fprintf(stderr, "drv: DRM_IOCTL_I915_GEM_SET_TILING failed with %d", errno);
 		return -errno;
+	}
+
+	if (flags & BO_USE_FRAMEBUFFER) {
+		// Add framebuffer
+		i915_bo_add_framebuffer(bo, format, stride, bo->handles[0].u32);
 	}
 
 	return 0;

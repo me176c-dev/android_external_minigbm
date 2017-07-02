@@ -90,7 +90,7 @@ int32_t cros_gralloc_invert_format(int format)
         }
 }
 
-cros_gralloc_handle_t cros_gralloc_convert_handle(buffer_handle_t handle)
+extern "C" cros_gralloc_handle_t cros_gralloc_convert_handle(buffer_handle_t handle)
 {
 	auto hnd = reinterpret_cast<cros_gralloc_handle_t>(handle);
 	if (!hnd || hnd->magic != cros_gralloc_magic)

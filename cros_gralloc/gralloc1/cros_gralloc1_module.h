@@ -24,6 +24,8 @@
 #include <hardware/gralloc1.h>
 #include <utils/Log.h>
 
+#include "../framebuffer.h"
+
 struct cros_gralloc_module;
 
 namespace android {
@@ -281,6 +283,7 @@ private:
 
     // Adapter internals
     std::unique_ptr<cros_gralloc_driver> driver;
+	struct cros_gralloc_framebuffer *fb;
 };
 
 } // namespace android
