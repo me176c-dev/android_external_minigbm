@@ -106,6 +106,8 @@ static SpinLock global_lock_;
 
 CrosGralloc1::CrosGralloc1 ()
 {
+    driver = NULL;
+    fb = NULL;
     getCapabilities = getCapabilitiesHook;
     getFunction = getFunctionHook;
     common.tag = HARDWARE_DEVICE_TAG;
