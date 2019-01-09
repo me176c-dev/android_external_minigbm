@@ -98,7 +98,8 @@ struct backend {
 // clang-format off
 #define BO_USE_RENDER_MASK BO_USE_LINEAR | BO_USE_PROTECTED | BO_USE_RENDERING | \
 	                   BO_USE_RENDERSCRIPT | BO_USE_SW_READ_OFTEN | BO_USE_SW_WRITE_OFTEN | \
-                           BO_USE_SW_READ_RARELY | BO_USE_SW_WRITE_RARELY | BO_USE_TEXTURE
+                           BO_USE_SW_READ_RARELY | BO_USE_SW_WRITE_RARELY | BO_USE_TEXTURE | \
+                               BO_USE_FRAMEBUFFER
 
 #define BO_USE_TEXTURE_MASK BO_USE_LINEAR | BO_USE_PROTECTED | BO_USE_RENDERSCRIPT | \
 	                    BO_USE_SW_READ_OFTEN | BO_USE_SW_WRITE_OFTEN | \

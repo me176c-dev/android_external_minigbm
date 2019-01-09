@@ -155,6 +155,9 @@ static int i915_add_combinations(struct driver *drv)
 	if (ret)
 		return ret;
 
+	/* TODO: Y tiling does not seem to work for framebuffers */
+	render_use_flags &= ~BO_USE_FRAMEBUFFER;
+
 	metadata.tiling = I915_TILING_Y;
 	metadata.priority = 3;
 	metadata.modifier = I915_FORMAT_MOD_Y_TILED;
